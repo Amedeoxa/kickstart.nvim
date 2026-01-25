@@ -52,6 +52,7 @@ rtp:prepend(lazypath)
 --    :Lazy update
 require 'custom/vim-options'
 require('lazy').setup 'custom/plugins'
+
 --  import = 'custom.plugins',
 -- }
 --[[

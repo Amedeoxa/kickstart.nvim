@@ -1,16 +1,27 @@
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = false
 
+-- set :terminal to use Fish
+vim.o.shell = 'fish'
+
+-- set :titlestring for window
+vim.opt.title = true
+vim.opt.titlestring = 'v  -  %F  %M'
+
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
---  For more options, you can see `:help option-list`
+--  For motre options, you can see `:help option-list`
 
 -- Make line numbers default
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
 vim.o.relativenumber = true
+
+-- Disable 'Oo' -> insert mode
+vim.keymap.set('n', 'o', 'o<Esc>', { noremap = true, silent = true })
+vim.keymap.set('n', 'O', 'O<Esc>', { noremap = true, silent = true })
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -71,15 +82,26 @@ vim.o.splitbelow = true
 vim.o.list = true
 vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
+-- Sets up the core tab settings
+vim.opt.tabstop = 2 -- A TAB displays as 2 spaces
+vim.opt.shiftwidth = 2 -- Auto-indent commands (like << or >>) use 2 spaces
+vim.opt.softtabstop = 2 -- Backspace and Insert mode tabs/auto-indent treat 2 spaces as one unit
+
+-- Tells Neovim to use spaces when the <Tab> key is pressed
+vim.opt.expandtab = true
+
 -- Preview substitutions live, as you type!
 vim.o.inccommand = 'split'
 
 -- Show which line your cursor is on
 vim.o.cursorline = true
 
--- Minimal number of screen lines to keep above and below the cursor.
-vim.o.scrolloff = 10
+-- Hardware Acceleration
+vim.opt.updatetime = 250
 
+-- Minimal number of screen lines to keep above and below the cursor.
+vim.opt.scrolloff = 10
+vim.cmd [[set display+=lastline]]
 -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
 -- instead raise a dialog asking if you wish to save the current file(s)
 -- See `:help 'confirm'`
@@ -102,6 +124,41 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 -- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
 -- or just use <C-\><C-n> to exit terminal mode
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+
+-- === Custom Terminal Split Setup ===
+-- settings the default shell
+vim.opt.shell = '/bin/bash'
+-- Define a custom function to open a horizontal terminal split with fixed height
+local function open_terminal_split_fixed(height)
+  -- Default to 10 lines if no height is specified
+  height = height or 10
+
+  -- 1. Use the height to pre-set the window size before creating the split.
+  -- The syntax "[N]split" creates a horizontal split N lines high.
+  local split_command = tostring(height) .. ' split'
+  vim.cmd(split_command)
+
+  -- 2. Open the terminal buffer in the newly created window.
+  -- This is the standard way to launch a terminal in Neovim.
+  vim.cmd 'terminal fish'
+
+  -- 3. Optionally enter insert mode immediately so you can start typing commands.
+  vim.cmd 'startinsert'
+end
+
+-- Create a user command to easily access the function: :TermSplit10
+vim.api.nvim_create_user_command('TermSplit10', function()
+  open_terminal_split_fixed(10)
+end, {
+  desc = 'Opens a horizontal terminal split with a fixed height of 10 lines.',
+})
+
+-- Example Keymap: <leader>tT
+vim.keymap.set('n', '<leader>tT', function()
+  open_terminal_split_fixed(10)
+end, { noremap = true, silent = true, desc = 'Open fixed-height terminal split' })
+
+-- =====================================
 
 -- TIP: Disable arrow keys in normal mode
 -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
@@ -136,4 +193,47 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function()
     vim.hl.on_yank()
   end,
+})
+
+-- Show line diagnostics automatically in hover window
+vim.o.updatetime = 500
+
+-- set rounded border for all floating windows
+vim.o.winborder = 'rounded'
+
+-- vim.cmd [[autocmd CursorHold,CursorHoldI * lua vim.diagnostic.open_float(nil, {focus=false})]]
+
+-- 2. Define the toggle state (default to ON)
+local auto_hover_diagnostics = false
+
+-- 3. Define the function to open the float window, checking the toggle
+local function toggleable_diagnostic_float()
+  if auto_hover_diagnostics then
+    -- Open the diagnostic float window only if the toggle is ON
+    vim.diagnostic.open_float(nil, {
+      focus = false,
+      -- You can also add a delay here, though updatetime is usually sufficient
+    })
+  end
+end
+
+-- 4. Define the function to toggle the state and provide feedback
+local function toggle_diagnostics()
+  auto_hover_diagnostics = not auto_hover_diagnostics
+  local status = auto_hover_diagnostics and 'ON' or 'OFF'
+
+  -- Display a message confirming the change
+  vim.notify('Auto-hover diagnostics Toggled: ' .. status, vim.log.levels.INFO)
+end
+
+-- 5. Define the AutoCommands (Autocmds) that use the toggle function
+vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
+  callback = toggleable_diagnostic_float,
+})
+
+-- 6. Define a keybinding to toggle the behavior
+-- Example: <leader>D will toggle auto-hover diagnostics ON/OFF
+vim.keymap.set('n', '<leader>D', toggle_diagnostics, {
+  desc = 'Toggle Auto-Hover Diagnostics',
+  silent = true,
 })
